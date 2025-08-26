@@ -1,0 +1,61 @@
+[project]
+name = "chc-abs-classifier"
+version = "0.1.0"
+description = "Community Health Centre geocoding and ABS statistical area classification"
+authors = [
+    {name = "TKC Team"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0.0",
+    "geopy>=2.3.0",
+    "geopandas>=0.13.0",
+    "shapely>=2.0.0",
+    "pyproj>=3.5.0",
+    "fiona>=1.9.0",
+    "requests>=2.28.0",
+    "python-dotenv>=1.0.0",
+    "typer[all]>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+chc-classifier = "src.app:app"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "N",  # pep8-naming
+    "UP", # pyupgrade
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
