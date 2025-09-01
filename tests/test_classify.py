@@ -146,10 +146,20 @@ class TestClassifyPoints:
         # Create test point
         df = pd.DataFrame({"CHC": ["Location 1"], "Latitude": [-12.0], "Longitude": [131.0]})
 
-        # Mock boundary layers
+        # Mock SA1 boundary with hierarchical data (as used in actual implementation)
         sa1_boundary = gpd.GeoDataFrame(
             {
-                "SA1_CODE_2021": ["123456"],
+                "SA1_CODE": ["123456"],
+                "SA2_CODE": ["789"],
+                "SA2_NAME": ["Test SA2"],
+                "SA3_CODE": ["ABC"],
+                "SA3_NAME": ["Test SA3"],
+                "SA4_CODE": ["DEF"],
+                "SA4_NAME": ["Test SA4"],
+                "GCC_CODE": ["GH"],
+                "GCC_NAME": ["Test GCC"],
+                "STE_CODE": ["NT"],
+                "STE_NAME": ["Northern Territory"],
                 "geometry": [
                     Polygon([(130.5, -12.5), (131.5, -12.5), (131.5, -11.5), (130.5, -11.5)])
                 ],
@@ -157,27 +167,8 @@ class TestClassifyPoints:
             crs="EPSG:4326",
         )
 
-        sa2_boundary = gpd.GeoDataFrame(
-            {
-                "SA2_CODE_2021": ["789"],
-                "SA2_NAME_2021": ["Test SA2"],
-                "geometry": [
-                    Polygon([(130.5, -12.5), (131.5, -12.5), (131.5, -11.5), (130.5, -11.5)])
-                ],
-            },
-            crs="EPSG:4326",
-        )
-
-        # Configure mock_load_layer to return different boundaries based on columns requested
-        def load_layer_side_effect(path, columns):
-            if "SA1_CODE_2021" in columns:
-                return sa1_boundary[columns + ["geometry"]]
-            elif "SA2_CODE_2021" in columns:
-                return sa2_boundary[columns + ["geometry"]]
-            else:
-                return gpd.GeoDataFrame()
-
-        mock_load_layer.side_effect = load_layer_side_effect
+        # Mock load_layer to return SA1 boundary
+        mock_load_layer.return_value = sa1_boundary
 
         # Test classification
         result = classify_points(df)
@@ -214,10 +205,20 @@ class TestClassifyPoints:
         # Create test point
         df = pd.DataFrame({"CHC": ["Location 1"], "Latitude": [-12.0], "Longitude": [131.0]})
 
-        # Mock boundary layer in different CRS
+        # Mock boundary layer in different CRS with hierarchical data
         sa1_boundary = gpd.GeoDataFrame(
             {
-                "SA1_CODE_2021": ["123456"],
+                "SA1_CODE": ["123456"],
+                "SA2_CODE": ["789"],
+                "SA2_NAME": ["Test SA2"],
+                "SA3_CODE": ["ABC"],
+                "SA3_NAME": ["Test SA3"],
+                "SA4_CODE": ["DEF"],
+                "SA4_NAME": ["Test SA4"],
+                "GCC_CODE": ["GH"],
+                "GCC_NAME": ["Test GCC"],
+                "STE_CODE": ["NT"],
+                "STE_NAME": ["Northern Territory"],
                 "geometry": [
                     Polygon([(130.5, -12.5), (131.5, -12.5), (131.5, -11.5), (130.5, -11.5)])
                 ],
@@ -235,8 +236,129 @@ class TestClassifyPoints:
         # Test classification
         classify_points(df)
 
-        # Should have attempted CRS reprojection
-        sa1_boundary.to_crs.assert_called_once_with("EPSG:4326")
+        # Should have attempted CRS reprojection (may be called twice due to IARE processing)
+        assert sa1_boundary.to_crs.call_count >= 1
+        sa1_boundary.to_crs.assert_called_with("EPSG:4326")
+
+    @patch("src.classify.load_layer")
+    @patch("src.classify.get_settings")
+    def test_classify_points_iare_success(self, mock_get_settings, mock_load_layer):
+        """Test successful IARE classification."""
+        # Mock settings
+        mock_settings = Mock()
+        mock_settings.default_crs = "EPSG:4326"
+
+        # Create mock file paths
+        mock_sa1_path = Mock()
+        mock_sa1_path.exists.return_value = True
+        mock_iare_path = Mock()
+        mock_iare_path.exists.return_value = True
+
+        mock_settings.asgs_sa1_path = mock_sa1_path
+        mock_settings.asgs_sa2_path = None
+        mock_settings.asgs_sa3_path = None
+        mock_settings.asgs_sa4_path = None
+        mock_settings.asgs_gccsa_path = None
+        mock_settings.asgs_ste_path = None
+        mock_settings.asgs_iare_path = mock_iare_path
+        mock_get_settings.return_value = mock_settings
+
+        # Create test point in Darwin area
+        df = pd.DataFrame({"CHC": ["Darwin CHC"], "Latitude": [-12.4634], "Longitude": [130.8456]})
+
+        # Mock SA1 boundary with hierarchical data
+        sa1_boundary = gpd.GeoDataFrame(
+            {
+                "SA1_CODE": ["701021544"],
+                "SA2_CODE": ["70102"],
+                "SA2_NAME": ["Darwin City"],
+                "SA3_CODE": ["701"],
+                "SA3_NAME": ["Darwin"],
+                "SA4_CODE": ["70"],
+                "SA4_NAME": ["Darwin"],
+                "GCC_CODE": ["7GDAR"],
+                "GCC_NAME": ["Darwin"],
+                "STE_CODE": ["7"],
+                "STE_NAME": ["Northern Territory"],
+                "geometry": [
+                    Polygon([(130.5, -12.7), (131.2, -12.7), (131.2, -12.2), (130.5, -12.2)])
+                ],
+            },
+            crs="EPSG:4326",
+        )
+
+        # Mock IARE boundary
+        iare_boundary = gpd.GeoDataFrame(
+            {
+                "IAR_CODE21": ["703001"],
+                "IAR_NAME21": ["Darwin - Inner Suburbs"],
+                "IRE_CODE21": ["703"],
+                "IRE_NAME21": ["Darwin"],
+                "geometry": [
+                    Polygon([(130.5, -12.7), (131.2, -12.7), (131.2, -12.2), (130.5, -12.2)])
+                ],
+            },
+            crs="EPSG:7844",  # IARE uses GDA2020
+        )
+
+        # Mock to_crs for IARE CRS transformation
+        iare_boundary_reprojected = iare_boundary.copy()
+        iare_boundary_reprojected.crs = "EPSG:4326"
+        iare_boundary.to_crs = Mock(return_value=iare_boundary_reprojected)
+
+        # Configure mock_load_layer to return different boundaries based on columns requested
+        def load_layer_side_effect(path, columns):
+            if "IAR_CODE21" in columns:
+                return iare_boundary[columns + ["geometry"]]
+            elif "SA1_CODE" in columns:
+                return sa1_boundary[columns + ["geometry"]]
+            else:
+                return gpd.GeoDataFrame()
+
+        mock_load_layer.side_effect = load_layer_side_effect
+
+        # Test classification
+        result = classify_points(df)
+
+        # Assertions
+        assert len(result) == 1
+        assert "IARE_CODE" in result.columns
+        assert "IARE_NAME" in result.columns
+        assert "IREG_CODE" in result.columns
+        assert "IREG_NAME" in result.columns
+
+        # Check that IARE classification worked
+        assert result.iloc[0]["IARE_CODE"] == "703001"
+        assert result.iloc[0]["IARE_NAME"] == "Darwin - Inner Suburbs"
+        assert result.iloc[0]["IREG_CODE"] == "703"
+        assert result.iloc[0]["IREG_NAME"] == "Darwin"
+
+        # Verify CRS transformation was available (may or may not be called depending on CRS)
+        assert hasattr(iare_boundary, "to_crs")
+
+    @patch("src.classify.get_settings")
+    def test_classify_points_no_iare_files(self, mock_get_settings):
+        """Test classification when IARE files are not available."""
+        # Mock settings without IARE files
+        mock_settings = Mock()
+        mock_settings.default_crs = "EPSG:4326"
+        mock_settings.asgs_sa1_path = None
+        mock_settings.asgs_iare_path = None
+        mock_get_settings.return_value = mock_settings
+
+        df = pd.DataFrame({"CHC": ["Location 1"], "Latitude": [-12.0], "Longitude": [131.0]})
+
+        result = classify_points(df)
+
+        # Should have IARE columns but they should be empty
+        assert "IARE_CODE" in result.columns
+        assert "IARE_NAME" in result.columns
+        assert "IREG_CODE" in result.columns
+        assert "IREG_NAME" in result.columns
+        assert result["IARE_CODE"].isna().all()
+        assert result["IARE_NAME"].isna().all()
+        assert result["IREG_CODE"].isna().all()
+        assert result["IREG_NAME"].isna().all()
 
 
 class TestGetClassificationSummary:
@@ -294,3 +416,28 @@ class TestGetClassificationSummary:
         assert summary["classified_successfully"] == 0
         assert summary["geocoding_success_rate"] == 1.0
         assert summary["classification_success_rate"] == 0.0
+
+    def test_get_classification_summary_with_iare(self):
+        """Test summary with IARE classification data."""
+        df = pd.DataFrame(
+            {
+                "CHC": ["Darwin CHC", "Alice Springs CHC", "Katherine CHC"],
+                "Latitude": [-12.46, -23.70, -14.47],
+                "Longitude": [130.85, 133.88, 132.26],
+                "SA1": ["701021544", "702021372", "701031234"],
+                "STATE_NAME": ["NT", "NT", "NT"],
+                "IARE_CODE": ["703001", "708001", "704001"],
+                "IARE_NAME": ["Darwin - Inner Suburbs", "Alice exc. Town Camps", "Katherine"],
+                "IREG_CODE": ["703", "708", "704"],
+                "IREG_NAME": ["Darwin", "Alice Springs", "Katherine"],
+            }
+        )
+
+        summary = get_classification_summary(df)
+
+        assert summary["total_locations"] == 3
+        assert summary["geocoded_successfully"] == 3
+        assert summary["classified_successfully"] == 3
+        assert summary["geocoding_success_rate"] == 1.0
+        assert summary["classification_success_rate"] == 1.0
+        assert summary["states_distribution"] == {"NT": 3}

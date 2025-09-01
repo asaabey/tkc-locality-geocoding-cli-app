@@ -19,6 +19,7 @@ class Settings:
     asgs_sa4_path: Path | None = None
     asgs_gccsa_path: Path | None = None
     asgs_ste_path: Path | None = None
+    asgs_iare_path: Path | None = None
 
     # Coordinate reference system
     default_crs: str = "EPSG:4326"
@@ -40,6 +41,7 @@ class Settings:
             asgs_sa4_path=cls._path_from_env("ASGS_SA4_PATH"),
             asgs_gccsa_path=cls._path_from_env("ASGS_GCCSA_PATH"),
             asgs_ste_path=cls._path_from_env("ASGS_STE_PATH"),
+            asgs_iare_path=cls._path_from_env("ASGS_IARE_PATH"),
             default_crs=os.getenv("DEFAULT_CRS", "EPSG:4326"),
             data_dir=Path(os.getenv("DATA_DIR", "data")),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
@@ -60,6 +62,7 @@ class Settings:
             "SA4": self.asgs_sa4_path,
             "GCCSA": self.asgs_gccsa_path,
             "STE": self.asgs_ste_path,
+            "IARE": self.asgs_iare_path,
         }
 
     def set_default_asgs_paths(self, asgs_dir: Path) -> None:
@@ -67,30 +70,54 @@ class Settings:
         # Try GeoPackage format first
         gpkg_files = {
             "sa1": asgs_dir / "SA1_2021_AUST_GDA2020.gpkg",
-            "sa2": asgs_dir / "SA2_2021_AUST_GDA2020.gpkg", 
+            "sa2": asgs_dir / "SA2_2021_AUST_GDA2020.gpkg",
             "sa3": asgs_dir / "SA3_2021_AUST_GDA2020.gpkg",
             "sa4": asgs_dir / "SA4_2021_AUST_GDA2020.gpkg",
             "gccsa": asgs_dir / "GCCSA_2021_AUST_GDA2020.gpkg",
-            "ste": asgs_dir / "STE_2021_AUST_GDA2020.gpkg"
+            "ste": asgs_dir / "STE_2021_AUST_GDA2020.gpkg",
+            "iare": asgs_dir / "IARE_2021_AUST_GDA2020.gpkg",
         }
-        
-        # Try Shapefile format as fallback
+
+        # Try Shapefile format as fallback (both in subdirectories and loose files)
         shp_files = {
             "sa1": asgs_dir / "SA1_2021_AUST_SHP_GDA2020" / "SA1_2021_AUST_GDA2020.shp",
             "sa2": asgs_dir / "SA2_2021_AUST_SHP_GDA2020" / "SA2_2021_AUST_GDA2020.shp",
-            "sa3": asgs_dir / "SA3_2021_AUST_SHP_GDA2020" / "SA3_2021_AUST_GDA2020.shp", 
+            "sa3": asgs_dir / "SA3_2021_AUST_SHP_GDA2020" / "SA3_2021_AUST_GDA2020.shp",
             "sa4": asgs_dir / "SA4_2021_AUST_SHP_GDA2020" / "SA4_2021_AUST_GDA2020.shp",
             "gccsa": asgs_dir / "GCCSA_2021_AUST_SHP_GDA2020" / "GCCSA_2021_AUST_GDA2020.shp",
-            "ste": asgs_dir / "STE_2021_AUST_SHP_GDA2020" / "STE_2021_AUST_GDA2020.shp"
+            "ste": asgs_dir / "STE_2021_AUST_SHP_GDA2020" / "STE_2021_AUST_GDA2020.shp",
+            "iare": asgs_dir / "IARE_2021_AUST_GDA2020_SHP" / "IARE_2021_AUST_GDA2020.shp",
         }
-        
-        # Set paths, preferring existing files
-        self.asgs_sa1_path = gpkg_files["sa1"] if gpkg_files["sa1"].exists() else shp_files["sa1"]
-        self.asgs_sa2_path = gpkg_files["sa2"] if gpkg_files["sa2"].exists() else shp_files["sa2"] 
-        self.asgs_sa3_path = gpkg_files["sa3"] if gpkg_files["sa3"].exists() else shp_files["sa3"]
-        self.asgs_sa4_path = gpkg_files["sa4"] if gpkg_files["sa4"].exists() else shp_files["sa4"]
-        self.asgs_gccsa_path = gpkg_files["gccsa"] if gpkg_files["gccsa"].exists() else shp_files["gccsa"]
-        self.asgs_ste_path = gpkg_files["ste"] if gpkg_files["ste"].exists() else shp_files["ste"]
+
+        # Try loose shapefile format (files directly in asgs directory)
+        loose_shp_files = {
+            "sa1": asgs_dir / "SA1_2021_AUST_GDA2020.shp",
+            "sa2": asgs_dir / "SA2_2021_AUST_GDA2020.shp",
+            "sa3": asgs_dir / "SA3_2021_AUST_GDA2020.shp",
+            "sa4": asgs_dir / "SA4_2021_AUST_GDA2020.shp",
+            "gccsa": asgs_dir / "GCCSA_2021_AUST_GDA2020.shp",
+            "ste": asgs_dir / "STE_2021_AUST_GDA2020.shp",
+            "iare": asgs_dir / "IARE_2021_AUST_GDA2020.shp",
+        }
+
+        # Set paths, preferring existing files in order: gpkg > shp in subdirs > loose shp
+        def _get_existing_path(key):
+            if gpkg_files[key].exists():
+                return gpkg_files[key]
+            elif shp_files[key].exists():
+                return shp_files[key]
+            elif loose_shp_files[key].exists():
+                return loose_shp_files[key]
+            else:
+                return None
+
+        self.asgs_sa1_path = _get_existing_path("sa1")
+        self.asgs_sa2_path = _get_existing_path("sa2")
+        self.asgs_sa3_path = _get_existing_path("sa3")
+        self.asgs_sa4_path = _get_existing_path("sa4")
+        self.asgs_gccsa_path = _get_existing_path("gccsa")
+        self.asgs_ste_path = _get_existing_path("ste")
+        self.asgs_iare_path = _get_existing_path("iare")
 
 
 # Global settings instance

@@ -140,14 +140,4 @@ cython_debug/
 data/input/temp_*
 
 # ASGS boundary files (too large for git)
-data/asgs/*.gpkg
-data/asgs/*.shp
-data/asgs/*.dbf
-data/asgs/*.prj
-data/asgs/*.shx
-data/asgs/*.xml
-data/asgs/*.cpg
-data/asgs/*_SHP_*/
-data/asgs/*_GPKG_*/
-!data/asgs/.gitkeep
-!data/asgs/README.md
+data/asgs/

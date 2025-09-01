@@ -4,7 +4,7 @@ Community Health Centre geocoding and Australian Bureau of Statistics (ABS) stat
 
 ## Overview
 
-This tool geocodes Community Health Centre (CHC) locations in the Northern Territory, Australia and classifies them into Australian Statistical Geography Standard (ASGS) areas including SA1, SA2, SA3, SA4, GCCSA, and State/Territory boundaries.
+This tool geocodes Community Health Centre (CHC) locations in the Northern Territory, Australia and classifies them into Australian Statistical Geography Standard (ASGS) areas including SA1, SA2, SA3, SA4, GCCSA, State/Territory boundaries, and Indigenous Areas (IARE).
 
 ## Quick Start
 
@@ -27,6 +27,7 @@ This tool geocodes Community Health Centre (CHC) locations in the Northern Terri
 
 - **Geocoding**: Nominatim API with rate limiting and retry logic
 - **ABS Classification**: Complete statistical hierarchy from SA1 boundaries
+- **Indigenous Areas**: IARE classification for Indigenous communities
 - **Smart Caching**: Skip already processed locations, add `--rebuild` to force refresh
 - **Modern CLI**: Rich terminal interface with progress indicators
 - **Robust**: Comprehensive error handling and testing
@@ -83,6 +84,7 @@ Optional `.env` file configuration:
 NOMINATIM_USER_AGENT=my_geocoder_app
 GEOCODE_MIN_DELAY_SEC=1.0
 ASGS_SA1_PATH=data/asgs/SA1_2021_AUST_SHP_GDA2020/SA1_2021_AUST_GDA2020.shp
+ASGS_IARE_PATH=data/asgs/IARE_2021_AUST_GDA2020_SHP/IARE_2021_AUST_GDA2020.shp
 ```
 
 ### Check Configuration
@@ -119,14 +121,23 @@ The app automatically converts raw locality names to qualified format (adds "NT,
 
 Download: [SA1_2021_AUST_SHP_GDA2020.zip](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/SA1_2021_AUST_SHP_GDA2020.zip)
 
-Extract to `data/asgs/` directory:
+**Optional**: Download Indigenous Areas (IARE) boundaries for Indigenous communities classification.
+
+Download: [IARE_2021_AUST_GDA2020_SHP.zip](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/IARE_2021_AUST_GDA2020_SHP.zip)
+
+Extract both to `data/asgs/` directory:
 ```
 data/asgs/
-└── SA1_2021_AUST_SHP_GDA2020/
-    ├── SA1_2021_AUST_GDA2020.shp
-    ├── SA1_2021_AUST_GDA2020.dbf
-    ├── SA1_2021_AUST_GDA2020.prj
-    └── SA1_2021_AUST_GDA2020.shx
+├── SA1_2021_AUST_SHP_GDA2020/
+│   ├── SA1_2021_AUST_GDA2020.shp
+│   ├── SA1_2021_AUST_GDA2020.dbf
+│   ├── SA1_2021_AUST_GDA2020.prj
+│   └── SA1_2021_AUST_GDA2020.shx
+└── IARE_2021_AUST_GDA2020_SHP/
+    ├── IARE_2021_AUST_GDA2020.shp
+    ├── IARE_2021_AUST_GDA2020.dbf
+    ├── IARE_2021_AUST_GDA2020.prj
+    └── IARE_2021_AUST_GDA2020.shx
 ```
 
 ## Output
@@ -141,6 +152,8 @@ CSV with geocoded coordinates and complete ABS statistical hierarchy:
 - **SA3_NAME**, **SA4_NAME**: Statistical Area Levels 3-4
 - **GCCSA_NAME**: Greater Capital City Statistical Area
 - **STATE_NAME**: State/Territory
+- **IARE_CODE**, **IARE_NAME**: Indigenous Area classification
+- **IREG_CODE**, **IREG_NAME**: Indigenous Region classification
 
 ## Development
 
@@ -201,6 +214,7 @@ uv run pytest tests/ --cov=src --cov-report=html --cov-report=term
 
 - **No geocoding results**: Check internet connectivity and location name accuracy
 - **Missing classifications**: Download SA1 boundaries to `data/asgs/`
+- **Missing Indigenous Areas**: Download IARE boundaries to `data/asgs/` for Indigenous classification
 - **Import errors**: Run `uv pip install -e ".[dev]"` and use `uv run` prefix
 
 ## License

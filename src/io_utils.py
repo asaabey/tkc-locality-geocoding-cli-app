@@ -27,22 +27,24 @@ def read_locations_file(path: Path, required_columns: list[str] | None = None) -
 
     try:
         # Handle .txt files (raw locality names)
-        if path.suffix.lower() == '.txt':
-            with open(path, 'r', encoding='utf-8') as f:
+        if path.suffix.lower() == ".txt":
+            with open(path, encoding="utf-8") as f:
                 lines = [line.strip() for line in f if line.strip()]
-            
+
             # Convert to qualified names with NT, Australia, but preserve original
             qualified_names = [f"{name}, NT, Australia" for name in lines]
-            df = pd.DataFrame({
-                "CHC": qualified_names,
-                "Original_CHC": lines  # Preserve original names
-            })
+            df = pd.DataFrame(
+                {
+                    "CHC": qualified_names,
+                    "Original_CHC": lines,  # Preserve original names
+                }
+            )
             logger.info(f"Converted {len(lines)} raw locality names to qualified format")
-        
+
         # Handle .csv files
         else:
             df = pd.read_csv(path)
-            
+
             # Validate required columns
             if required_columns:
                 missing_columns = [col for col in required_columns if col not in df.columns]
@@ -71,18 +73,18 @@ def read_locations_file(path: Path, required_columns: list[str] | None = None) -
 
 def restore_original_names(df: pd.DataFrame) -> pd.DataFrame:
     """Restore original CHC names in the final output.
-    
+
     Args:
         df: DataFrame with processed results
-        
+
     Returns:
         DataFrame with original CHC names restored
     """
-    if 'Original_CHC' in df.columns:
+    if "Original_CHC" in df.columns:
         # Replace CHC column with original names and drop the Original_CHC column
         result_df = df.copy()
-        result_df['CHC'] = result_df['Original_CHC']
-        result_df = result_df.drop(columns=['Original_CHC'])
+        result_df["CHC"] = result_df["Original_CHC"]
+        result_df = result_df.drop(columns=["Original_CHC"])
         logger.info("Restored original CHC names in output")
         return result_df
     else:
@@ -220,40 +222,42 @@ def load_existing_cache(cache_path: Path) -> pd.DataFrame:
 
 def is_location_complete(row: pd.Series) -> bool:
     """Check if a location has complete geocoding and classification data.
-    
+
     Args:
         row: DataFrame row to check
-        
+
     Returns:
         True if location has coordinates and SA1 classification
     """
     return (
-        pd.notna(row.get('Latitude')) and 
-        pd.notna(row.get('Longitude')) and 
-        pd.notna(row.get('SA1'))
+        pd.notna(row.get("Latitude"))
+        and pd.notna(row.get("Longitude"))
+        and pd.notna(row.get("SA1"))
     )
 
 
 def is_location_geocoded(row: pd.Series) -> bool:
     """Check if a location has geocoding data (coordinates).
-    
+
     Args:
         row: DataFrame row to check
-        
+
     Returns:
         True if location has coordinates
     """
-    return pd.notna(row.get('Latitude')) and pd.notna(row.get('Longitude'))
+    return pd.notna(row.get("Latitude")) and pd.notna(row.get("Longitude"))
 
 
-def merge_with_cache(input_df: pd.DataFrame, cache_df: pd.DataFrame, rebuild_mode: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def merge_with_cache(
+    input_df: pd.DataFrame, cache_df: pd.DataFrame, rebuild_mode: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Merge input locations with cached results and determine what needs processing.
-    
+
     Args:
         input_df: New locations to process
         cache_df: Previously processed locations from cache
         rebuild_mode: If True, ignore cache and process everything
-        
+
     Returns:
         Tuple of (to_geocode_df, to_classify_df, already_complete_df)
         - to_geocode_df: Locations needing geocoding + classification
@@ -262,22 +266,23 @@ def merge_with_cache(input_df: pd.DataFrame, cache_df: pd.DataFrame, rebuild_mod
     """
     if rebuild_mode or cache_df.empty:
         # Rebuild mode or no cache - process everything
-        logger.info(f"{'Rebuild mode' if rebuild_mode else 'No cache'}: processing all {len(input_df)} locations")
+        mode = "Rebuild mode" if rebuild_mode else "No cache"
+        logger.info(f"{mode}: processing all {len(input_df)} locations")
         return input_df.copy(), pd.DataFrame(), pd.DataFrame()
-    
+
     # Find matches between input and cache based on CHC name
-    cache_dict = {row['CHC']: row for _, row in cache_df.iterrows()}
-    
+    cache_dict = {row["CHC"]: row for _, row in cache_df.iterrows()}
+
     to_geocode_list = []
-    to_classify_list = []  
+    to_classify_list = []
     already_complete_list = []
-    
+
     for _, input_row in input_df.iterrows():
-        chc_name = input_row['CHC']
-        
+        chc_name = input_row["CHC"]
+
         if chc_name in cache_dict:
             cached_row = cache_dict[chc_name]
-            
+
             if is_location_complete(cached_row):
                 # Complete - use cached result
                 already_complete_list.append(cached_row)
@@ -285,9 +290,9 @@ def merge_with_cache(input_df: pd.DataFrame, cache_df: pd.DataFrame, rebuild_mod
                 # Geocoded but not classified - needs classification only
                 # Create row with geocoding data for classification
                 row_for_classification = input_row.copy()
-                row_for_classification['Latitude'] = cached_row['Latitude']
-                row_for_classification['Longitude'] = cached_row['Longitude']
-                row_for_classification['Address'] = cached_row.get('Address', '')
+                row_for_classification["Latitude"] = cached_row["Latitude"]
+                row_for_classification["Longitude"] = cached_row["Longitude"]
+                row_for_classification["Address"] = cached_row.get("Address", "")
                 to_classify_list.append(row_for_classification)
             else:
                 # Incomplete - needs full processing
@@ -295,13 +300,25 @@ def merge_with_cache(input_df: pd.DataFrame, cache_df: pd.DataFrame, rebuild_mod
         else:
             # Not in cache - needs full processing
             to_geocode_list.append(input_row)
-    
-    to_geocode_df = pd.DataFrame(to_geocode_list) if to_geocode_list else pd.DataFrame(columns=input_df.columns)
-    to_classify_df = pd.DataFrame(to_classify_list) if to_classify_list else pd.DataFrame(columns=input_df.columns)
-    already_complete_df = pd.DataFrame(already_complete_list) if already_complete_list else pd.DataFrame()
-    
-    logger.info(f"Cache analysis: {len(already_complete_df)} complete, {len(to_classify_df)} need classification only, {len(to_geocode_df)} need full processing")
-    
+
+    to_geocode_df = (
+        pd.DataFrame(to_geocode_list) if to_geocode_list else pd.DataFrame(columns=input_df.columns)
+    )
+    to_classify_df = (
+        pd.DataFrame(to_classify_list)
+        if to_classify_list
+        else pd.DataFrame(columns=input_df.columns)
+    )
+    already_complete_df = (
+        pd.DataFrame(already_complete_list) if already_complete_list else pd.DataFrame()
+    )
+
+    logger.info(
+        f"Cache analysis: {len(already_complete_df)} complete, "
+        f"{len(to_classify_df)} need classification only, "
+        f"{len(to_geocode_df)} need full processing"
+    )
+
     return to_geocode_df, to_classify_df, already_complete_df
 
 

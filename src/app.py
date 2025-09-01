@@ -50,7 +50,11 @@ def setup_sample_data() -> None:
 
 
 def main_process(
-    input_csv: str, output_csv: str, skip_classification: bool, create_sample: bool, rebuild: bool = False
+    input_csv: str,
+    output_csv: str,
+    skip_classification: bool,
+    create_sample: bool,
+    rebuild: bool = False,
 ) -> None:
     """Main processing logic for CHC locations."""
 
@@ -85,9 +89,15 @@ def main_process(
             # Step 2: Load cache and determine what needs processing
             task = progress.add_task("Analyzing cache...", total=None)
             cache_df = load_existing_cache(output_path)
-            to_geocode_df, to_classify_df, already_complete_df = merge_with_cache(df, cache_df, rebuild)
-            
-            cache_msg = f"✓ Cache analyzed: {len(already_complete_df)} complete, {len(to_classify_df)} classification needed, {len(to_geocode_df)} full processing needed"
+            to_geocode_df, to_classify_df, already_complete_df = merge_with_cache(
+                df, cache_df, rebuild
+            )
+
+            cache_msg = (
+                f"✓ Cache analyzed: {len(already_complete_df)} complete, "
+                f"{len(to_classify_df)} classification needed, "
+                f"{len(to_geocode_df)} full processing needed"
+            )
             if rebuild:
                 cache_msg = f"✓ Rebuild mode: processing all {len(df)} locations"
             progress.update(task, description=cache_msg)
@@ -107,7 +117,7 @@ def main_process(
             # Combine all geocoded data for validation and classification
             if df_geocoded_results:
                 df_geocoded = pd.concat(df_geocoded_results, ignore_index=True)
-                
+
                 # Step 4: Validate results
                 task = progress.add_task("Validating results...", total=None)
                 validation_passed = validate_geocoded_data(df_geocoded, min_success_rate=0.8)
@@ -120,13 +130,18 @@ def main_process(
 
             # Step 5: ABS Classification (if not skipped)
             df_classified_results = []
-            
+
             # Check if ASGS files are available (needed for both logic and error messages)
             asgs_paths = settings.get_asgs_paths()
-            available_files = [
-                name for name, path in asgs_paths.items() if path and path.exists()
-            ]
-            
+            available_files = [name for name, path in asgs_paths.items() if path and path.exists()]
+
+            # Warn if classification requested but no ASGS files available
+            if not skip_classification and not available_files:
+                console.print(
+                    "\n[yellow]⚠️  Warning:[/yellow] No ASGS boundary files found. "
+                    "SA1-SA4 classification will be skipped."
+                )
+
             if not skip_classification and not df_geocoded.empty:
                 task = progress.add_task("Classifying into ABS areas...", total=None)
 
@@ -155,7 +170,7 @@ def main_process(
             if df_classified_results:
                 df_classified = pd.concat(df_classified_results, ignore_index=True)
                 # Sort by CHC name for consistent output
-                df_classified = df_classified.sort_values('CHC').reset_index(drop=True)
+                df_classified = df_classified.sort_values("CHC").reset_index(drop=True)
             else:
                 df_classified = df
 
@@ -198,15 +213,6 @@ def main_process(
         print_results_preview(df_final)
 
         console.print(f"\n[green]✓[/green] Processing complete! Results saved to: {output_path}")
-
-        if not skip_classification and not available_files:
-            console.print(
-                "\n[blue]💡 Tip:[/blue] Download ASGS boundary files to enable "
-                "full ABS classification"
-            )
-            console.print(
-                "Visit: https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files"
-            )
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

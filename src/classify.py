@@ -42,26 +42,30 @@ def load_layer(path: Path, cols: list[str]) -> gpd.GeoDataFrame:
                 f"{std_col.replace('GCCSA', 'GCC')}21",  # GCCSA -> GCC21 variation
                 f"{std_col.replace('STE', 'STE')}21",  # STE21 variation
             ]
-            
+
             for candidate in candidates:
                 if candidate in gdf.columns:
                     column_mapping[std_col] = candidate
                     break
-        
+
         if not column_mapping:
-            logger.warning(f"No specified columns found in {path}. "
-                         f"Requested: {cols}, Available: {list(gdf.columns)}")
+            logger.warning(
+                f"No specified columns found in {path}. "
+                f"Requested: {cols}, Available: {list(gdf.columns)}"
+            )
             return gdf
 
         # Select columns and rename to standard format
         cols_to_keep = list(column_mapping.values()) + ["geometry"]
         gdf_filtered = gdf[cols_to_keep].copy()
-        
+
         # Rename columns to standard format
         rename_dict = {v: k for k, v in column_mapping.items()}
         gdf_filtered = gdf_filtered.rename(columns=rename_dict)
 
-        logger.info(f"Loaded {len(gdf_filtered)} features with columns: {list(column_mapping.keys())}")
+        logger.info(
+            f"Loaded {len(gdf_filtered)} features with columns: {list(column_mapping.keys())}"
+        )
         return gdf_filtered
 
     except Exception as e:
@@ -90,6 +94,10 @@ def classify_points(df_points: pd.DataFrame) -> pd.DataFrame:
         "SA4_NAME",
         "GCCSA_NAME",
         "STATE_NAME",
+        "IARE_CODE",
+        "IARE_NAME",
+        "IREG_CODE",
+        "IREG_NAME",
     ]
     for col in abs_columns:
         result_df[col] = None
@@ -116,8 +124,17 @@ def classify_points(df_points: pd.DataFrame) -> pd.DataFrame:
     try:
         # Load SA1 boundaries with all hierarchical columns
         hierarchy_columns = [
-            "SA1_CODE", "SA2_CODE", "SA2_NAME", "SA3_CODE", "SA3_NAME", 
-            "SA4_CODE", "SA4_NAME", "GCC_CODE", "GCC_NAME", "STE_CODE", "STE_NAME"
+            "SA1_CODE",
+            "SA2_CODE",
+            "SA2_NAME",
+            "SA3_CODE",
+            "SA3_NAME",
+            "SA4_CODE",
+            "SA4_NAME",
+            "GCC_CODE",
+            "GCC_NAME",
+            "STE_CODE",
+            "STE_NAME",
         ]
         sa1_gdf = load_layer(settings.asgs_sa1_path, hierarchy_columns)
 
@@ -132,7 +149,7 @@ def classify_points(df_points: pd.DataFrame) -> pd.DataFrame:
         # Map hierarchical columns to result DataFrame
         hierarchy_mapping = {
             "SA1": "SA1_CODE",
-            "SA2_CODE": "SA2_CODE", 
+            "SA2_CODE": "SA2_CODE",
             "SA2_NAME": "SA2_NAME",
             "SA3_NAME": "SA3_NAME",
             "SA4_NAME": "SA4_NAME",
@@ -151,6 +168,42 @@ def classify_points(df_points: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error processing SA1 hierarchical classification: {e}")
         return result_df
+
+    # IARE (Indigenous Areas) classification
+    if settings.asgs_iare_path is None or not settings.asgs_iare_path.exists():
+        logger.info("IARE boundaries not found - skipping Indigenous Areas classification")
+    else:
+        try:
+            # Load IARE boundaries
+            iare_columns = ["IAR_CODE21", "IAR_NAME21", "IRE_CODE21", "IRE_NAME21"]
+            iare_gdf = load_layer(settings.asgs_iare_path, iare_columns)
+
+            # Ensure CRS matches - IARE uses EPSG:7844 (GDA2020)
+            if iare_gdf.crs != points_gdf.crs:
+                logger.info(f"Reprojecting IARE boundaries from {iare_gdf.crs} to {points_gdf.crs}")
+                iare_gdf = iare_gdf.to_crs(points_gdf.crs)
+
+            # Perform spatial join for IARE classification
+            iare_joined = gpd.sjoin(points_gdf, iare_gdf, how="left", predicate="within")
+
+            # Map IARE columns to result DataFrame
+            iare_mapping = {
+                "IARE_CODE": "IAR_CODE21",
+                "IARE_NAME": "IAR_NAME21",
+                "IREG_CODE": "IRE_CODE21",
+                "IREG_NAME": "IRE_NAME21",
+            }
+
+            # Update only the rows that had valid coordinates
+            valid_indices = valid_points.index
+            for result_col, source_col in iare_mapping.items():
+                if source_col in iare_joined.columns:
+                    result_df.loc[valid_indices, result_col] = iare_joined[source_col].values
+
+            logger.info("Successfully classified points using IARE boundaries")
+
+        except Exception as e:
+            logger.error(f"Error processing IARE classification: {e}")
 
     # Log classification success rate
     classified_count = result_df[abs_columns].notna().any(axis=1).sum()
@@ -180,6 +233,10 @@ def get_classification_summary(df: pd.DataFrame) -> dict[str, Any]:
         "SA4_NAME",
         "GCCSA_NAME",
         "STATE_NAME",
+        "IARE_CODE",
+        "IARE_NAME",
+        "IREG_CODE",
+        "IREG_NAME",
     ]
     available_abs_columns = [col for col in abs_columns if col in df.columns]
 
