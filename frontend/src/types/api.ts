@@ -38,3 +38,10 @@ export interface BatchLocationResponse {
   successful_geocodes: number
   failed_geocodes: number
 }
+
+export interface HealthResponse {
+  status: string
+  version: string
+  asgs_files_available: boolean
+  nominatim_accessible: boolean
+}

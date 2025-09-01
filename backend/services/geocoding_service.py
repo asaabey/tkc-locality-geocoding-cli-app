@@ -30,9 +30,10 @@ class GeocodingService:
             
             # Create DataFrame for classification
             df = pd.DataFrame([{
-                'location': location,
+                'CHC': location,
                 'Latitude': geocode_result['lat'],
-                'Longitude': geocode_result['lon']
+                'Longitude': geocode_result['lon'],
+                'Address': geocode_result['address']
             }])
             
             # Classify the point
@@ -54,8 +55,9 @@ class GeocodingService:
                 location=location,
                 latitude=row.get('Latitude'),
                 longitude=row.get('Longitude'),
-                sa1_code=row.get('SA1_CODE'),
-                sa1_name=row.get('SA1_NAME'),
+                address=row.get('Address'),
+                sa1_code=row.get('SA1'),
+                sa1_name=None,  # Not available in current ASGS data structure
                 sa2_code=row.get('SA2_CODE'),
                 sa2_name=row.get('SA2_NAME'),
                 sa3_code=row.get('SA3_CODE'),
@@ -64,10 +66,12 @@ class GeocodingService:
                 sa4_name=row.get('SA4_NAME'),
                 gccsa_code=row.get('GCCSA_CODE'),
                 gccsa_name=row.get('GCCSA_NAME'),
-                state_code=row.get('STE_CODE'),
-                state_name=row.get('STE_NAME'),
+                state_code=row.get('STATE_CODE'),
+                state_name=row.get('STATE_NAME'),
                 iare_code=row.get('IARE_CODE'),
                 iare_name=row.get('IARE_NAME'),
+                ireg_code=row.get('IREG_CODE'),
+                ireg_name=row.get('IREG_NAME'),
                 geocode_success=True
             )
             

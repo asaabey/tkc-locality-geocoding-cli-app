@@ -36,7 +36,7 @@ export function LocationForm({ onResult, onBatchResult }: LocationFormProps) {
   const handleSingleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (singleLocation.trim()) {
-      singleMutation.mutate({ location: singleLocation.trim() })
+      singleMutation.mutate(singleLocation.trim())
     }
   }
 
@@ -49,7 +49,7 @@ export function LocationForm({ onResult, onBatchResult }: LocationFormProps) {
         .filter(loc => loc.length > 0)
       
       if (locations.length > 0) {
-        batchMutation.mutate({ locations })
+        batchMutation.mutate(locations)
       }
     }
   }

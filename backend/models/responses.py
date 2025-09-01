@@ -5,6 +5,7 @@ class LocationResult(BaseModel):
     location: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    address: Optional[str] = None
     sa1_code: Optional[str] = None
     sa1_name: Optional[str] = None
     sa2_code: Optional[str] = None
@@ -19,6 +20,8 @@ class LocationResult(BaseModel):
     state_name: Optional[str] = None
     iare_code: Optional[str] = None
     iare_name: Optional[str] = None
+    ireg_code: Optional[str] = None
+    ireg_name: Optional[str] = None
     geocode_success: bool = False
     error_message: Optional[str] = None
 
