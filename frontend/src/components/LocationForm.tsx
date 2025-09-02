@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { geocodeApi } from '../lib/api'
+import { geocodeApi } from '@/lib/api'
 import type { LocationResult, SingleLocationResponse, BatchLocationResponse } from '../types/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'

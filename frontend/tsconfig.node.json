@@ -11,7 +11,6 @@
     /* Module resolution */
     "moduleResolution": "node",
     "baseUrl": ".",
-    "paths": {},
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
