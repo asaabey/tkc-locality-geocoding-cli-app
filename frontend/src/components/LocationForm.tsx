@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { geocodeApi } from '../lib/api'
-import type { LocationResult } from '../types/api'
+import type { LocationResult, SingleLocationResponse, BatchLocationResponse } from '../types/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
@@ -17,17 +17,17 @@ export function LocationForm({ onResult, onBatchResult }: LocationFormProps) {
   const [batchLocations, setBatchLocations] = useState('')
   const [mode, setMode] = useState<'single' | 'batch'>('single')
 
-  const singleMutation = useMutation({
-    mutationFn: geocodeApi.geocodeSingle,
-    onSuccess: (data) => {
+  const singleMutation = useMutation<SingleLocationResponse, Error, string>({
+    mutationFn: (location: string) => geocodeApi.geocodeSingle(location),
+    onSuccess: (data: SingleLocationResponse) => {
       onResult(data.result)
       setSingleLocation('')
     },
   })
 
-  const batchMutation = useMutation({
-    mutationFn: geocodeApi.geocodeBatch,
-    onSuccess: (data) => {
+  const batchMutation = useMutation<BatchLocationResponse, Error, string[]>({
+    mutationFn: (locations: string[]) => geocodeApi.geocodeBatch(locations),
+    onSuccess: (data: BatchLocationResponse) => {
       onBatchResult(data.results)
       setBatchLocations('')
     },
@@ -44,10 +44,10 @@ export function LocationForm({ onResult, onBatchResult }: LocationFormProps) {
     e.preventDefault()
     if (batchLocations.trim()) {
       const locations = batchLocations
-        .split('\\n')
+        .split('\n')
         .map(loc => loc.trim())
         .filter(loc => loc.length > 0)
-      
+
       if (locations.length > 0) {
         batchMutation.mutate(locations)
       }

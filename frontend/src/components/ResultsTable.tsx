@@ -20,7 +20,7 @@ export function ResultsTable({ results, onClear }: ResultsTableProps) {
       'SA1_Name',
       'SA2_Code',
       'SA2_Name',
-      'SA3_Code', 
+      'SA3_Code',
       'SA3_Name',
       'SA4_Code',
       'SA4_Name',
@@ -78,8 +78,8 @@ export function ResultsTable({ results, onClear }: ResultsTableProps) {
           <div>
             <CardTitle>Geocoding Results</CardTitle>
             <CardDescription>
-              {results.length} location(s) processed • 
-              <span className="text-green-600 ml-1">{successCount} successful</span> • 
+              {results.length} location(s) processed •
+              <span className="text-green-600 ml-1">{successCount} successful</span> •
               <span className="text-red-600 ml-1">{failureCount} failed</span>
             </CardDescription>
           </div>
