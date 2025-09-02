@@ -1,0 +1,24 @@
+# Netlify configuration for building the frontend subdirectory
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist"
+  
+  [build.environment]
+    NODE_VERSION = "20"
+
+# Local dev hints (optional for Netlify CLI)
+[dev]
+  command = "npm run dev"
+  port = 5173
+  targetPort = 5173
+  framework = "vite"
+
+# Production environment variables
+[context.production.environment]
+  VITE_API_BASE_URL = "https://aus-geocoding-api.docpockets.com"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
