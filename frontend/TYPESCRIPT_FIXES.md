@@ -53,8 +53,28 @@ Both tsconfig files now use:
 ✅ All module imports resolve correctly
 ✅ Compatible with both local development and Netlify build environments
 
+## Testing Before Commit
+
+A build verification script has been created: `test-build.sh`
+
+**Always run this before committing:**
+```bash
+./test-build.sh
+```
+
+Or use the npm script:
+```bash
+npm run verify
+```
+
+This script verifies:
+- All critical files exist
+- TypeScript compilation passes (`tsc -b`)
+- Full build process works (`npm run build`)
+- Build artifacts are generated correctly
+
 ## Next Steps
 The build should now work on Netlify. If issues persist, consider:
 1. Ensuring consistent Node.js version (currently set to 20 in netlify.toml)
 2. Clearing build cache if needed
-3. Upgrading TypeScript if newer features are required
+3. Running the test script locally to verify all works before pushing

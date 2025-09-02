@@ -12,7 +12,12 @@
     /* Module resolution */
     "moduleResolution": "node",
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@/*": ["src/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/components/*": ["src/components/*"],
+      "@/types/*": ["src/types/*"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,

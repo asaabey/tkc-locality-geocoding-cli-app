@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:build": "./test-build.sh",
+    "verify": "./test-build.sh"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.12",
